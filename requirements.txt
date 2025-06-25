@@ -1,0 +1,5 @@
+gradio
+cohere
+tweepy
+newspaper3k
+python-dotenv
