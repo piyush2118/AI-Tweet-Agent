@@ -3,7 +3,8 @@ import cohere
 from newspaper import Article
 from dotenv import load_dotenv
 import os
-
+import time
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -104,30 +105,46 @@ client = tweepy.Client(
 auth = tweepy.OAuth1UserHandler(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET)
 api = tweepy.API(auth)
 
-import time  
+
+
 def post_tweet_thread_v2(tweets):
     try:
         tweet_chain = []
         clean_tweets = [t.strip() for t in tweets if t.strip()]
-
+        
         # Post first tweet
         response = client.create_tweet(text=clean_tweets[0])
         tweet_id = response.data["id"]
         tweet_chain.append(tweet_id)
-
-        # Post rest as replies with delay
-        for tweet in clean_tweets[1:]:
-            time.sleep(2)  # ⏱️ Wait 2 seconds before each post
-            response = client.create_tweet(
-                text=tweet,
-                in_reply_to_tweet_id=tweet_chain[-1]
-            )
-            tweet_chain.append(response.data["id"])
-
+        print(f"✅ Posted tweet 1/{len(clean_tweets)}")
+        
+        # Post rest with longer delays
+        for i, tweet in enumerate(clean_tweets[1:], 2):
+            time.sleep(10)  # 🔥 Increased from 2 to 10 seconds
+            try:
+                response = client.create_tweet(
+                    text=tweet,
+                    in_reply_to_tweet_id=tweet_chain[-1]
+                )
+                tweet_chain.append(response.data["id"])
+                print(f"✅ Posted tweet {i}/{len(clean_tweets)}")
+                
+            except tweepy.TooManyRequests as e:
+                print(f"❌ Rate limited! Waiting 15 minutes...")
+                time.sleep(900)  # Wait 15 minutes
+                # Retry once
+                response = client.create_tweet(
+                    text=tweet,
+                    in_reply_to_tweet_id=tweet_chain[-1]
+                )
+                tweet_chain.append(response.data["id"])
+                
         return f"https://twitter.com/user/status/{tweet_chain[0]}"
+        
+    except tweepy.TooManyRequests as e:
+        return f"❌ Rate limited: Try again in 15 minutes"
     except Exception as e:
-        return f"[Tweeting failed ❌: {e}]"
-
+        return f"❌ Twitter error: {e}"
 
 
 
