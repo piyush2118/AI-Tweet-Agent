@@ -4,10 +4,10 @@ from newspaper import Article
 from dotenv import load_dotenv
 import os
 
-# ✅ Load environment variables from .env
+
 load_dotenv()
 
-# --- Setup Cohere client ---
+
 cohereKey = os.getenv("Cohere_key")
 co = cohere.Client(cohereKey)
 
@@ -36,7 +36,7 @@ Article:
         return [f"[Error: {e}]"]
 
 
-# --- Tweet thread formatter ---
+
 def generate_tweet_thread(title, url, bullet_points):
     tweets = []
 
@@ -64,7 +64,7 @@ def generate_tweet_thread(title, url, bullet_points):
 
     return tweets  # ✅ return list (NOT joined string)
 
-# --- Full pipeline for Gradio ---
+
 def run_agent(url):
     try:
         article = Article(url)
@@ -104,42 +104,34 @@ client = tweepy.Client(
 auth = tweepy.OAuth1UserHandler(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET)
 api = tweepy.API(auth)
 
+import time  
 def post_tweet_thread_v2(tweets):
     try:
         tweet_chain = []
-
-        # ✅ Ensure we're working with a list (not a single string)
-        if isinstance(tweets, str):
-            tweets = [t.strip() for t in tweets.split("\n\n") if t.strip()]
-
-        # ✅ Filter out any empty or blank tweets
         clean_tweets = [t.strip() for t in tweets if t.strip()]
-        if not clean_tweets:
-            return "[Tweeting failed ❌: No valid tweets to post.]"
 
-        # ✅ Post the first tweet
+        # Post first tweet
         response = client.create_tweet(text=clean_tweets[0])
         tweet_id = response.data["id"]
         tweet_chain.append(tweet_id)
 
-        # ✅ Post the rest as replies (a thread)
+        # Post rest as replies with delay
         for tweet in clean_tweets[1:]:
+            time.sleep(2)  # ⏱️ Wait 2 seconds before each post
             response = client.create_tweet(
                 text=tweet,
                 in_reply_to_tweet_id=tweet_chain[-1]
             )
             tweet_chain.append(response.data["id"])
 
-        # ✅ Return the link to the first tweet
         return f"https://twitter.com/user/status/{tweet_chain[0]}"
-
     except Exception as e:
         return f"[Tweeting failed ❌: {e}]"
 
 
 
 
-# --- Gradio UI ---
+
 app = gr.Interface(
     fn=run_agent,
     inputs=gr.Textbox(label="Paste article URL here"),
